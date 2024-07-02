@@ -1,0 +1,123 @@
+#!/bin/sh -e
+#L:  MIT License
+#L:
+#l:  Copyright (c) 2024 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining a copy
+#L:  of this software and associated documentation files (the "Software"), to deal
+#L:  in the Software without restriction, including without limitation the rights
+#L:  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#L:  copies of the Software, and to permit persons to whom the Software is
+#L:  furnished to do so, subject to the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be included in all
+#L:  copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#L:  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#L:  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#L:  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#L:  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#L:  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#L:  SOFTWARE.
+##:
+#h: Usage: getinfo ...
+#h:
+#h: Load shell scripts to fetch variables/configuration.
+#h:
+#h:   -l FILE...     : Load files.
+#h:   -L FILE...     : Load files (optional).
+#h:   -c VAR...      : Check variables are set, print VAR_help if not.
+#h:   -a VAR=HELP... : Set variable help.
+#h:   -p all|VARS... : Print variables.
+#h:   -s             : Print variable help summary.
+#h:   -g VARS...     : Get variable value.
+##:
+getinfo() {
+    local cmd="-g"
+    while test -n "$1"; do
+        case "$1" in
+            -s) getinfo_print_summary; shift; continue;;
+            -*) cmd="$1"; shift; continue;;
+        esac
+        case "${cmd}" in
+            -l) getinfo_load_required   "$1";;
+            -L) getinfo_load_optional   "$1";;
+            -c) getinfo_check           "$1";;
+            -a) getinfo_set_help        "$1";;
+            -p) getinfo_print           "$1";;
+            -g) getinfo_get             "$1";;
+            *)  echo >&2 "error: ${cmd}: Unsupported argument."; return 1;;
+        esac
+        shift
+    done
+}
+## -------------------------------------------------------------------
+getinfo_load_required() {
+    if test ! -f "$1"; then
+        echo >&2 "error: $1: The file does not exist."
+        return 1
+    fi
+    getinfo_load "$1"
+}
+getinfo_load_optional() {
+    if test ! -f "$1"; then
+        return 0
+    fi
+    getinfo_load "$1"
+}
+getinfo_load() {
+    local pwd="$(pwd)"
+    cd "$(dirname "$1")"
+    . ./"$(basename "$1")"
+    cd "${pwd}"
+}
+getinfo_check() {
+    if test -n "$(getinfo_get "$1")"; then
+        return 0
+    fi
+    local hlp="$(getinfo_get "${1}_help")"
+    echo >&2 "error: ${1}: Variable not set."
+    if test -n "${hlp}"; then
+        echo >&2 "error: ${1}: help: ${hlp}"
+    fi
+}
+getinfo_set_help() {
+    local var="${1%%=*}"
+    local val="${1#*=}"
+    export "${var}"_help="${val}"
+    GETINFO_VARS="${GETINFO_VARS} ${var}"
+}
+getinfo_print() {
+    local v
+    if test @"$1" = @"all"; then
+        for v in ${GETINFO_VARS}; do
+            getinfo_print "$v"
+        done
+    else
+        printf '%-30s : %s\n' "$1" "$(getinfo_get "$1")"
+    fi
+}
+getinfo_print_summary() {
+    local var
+    for var in ${GETINFO_VARS}; do
+        printf '%-30s : %s\n' "${var}" "$(getinfo_get "${var}_help")"
+    done
+}
+getinfo_get() {
+    eval "echo \"\${$1}\""
+}
+## -------------------------------------------------------------------
+if test @"${SCRNAME:-$(basename "$0")}" = @"getinfo"; then
+    case "${1}" in
+        ''|-h|--help)
+            sed -n 's/^ *#h: \{0,1\}//p' "$0"
+            echo ""
+            sed -n 's/^ *#l: \{0,2\}//p' "$0"
+            ;;
+        *)
+            getinfo "$@"
+            exit 0
+            ;;
+    esac
+fi
