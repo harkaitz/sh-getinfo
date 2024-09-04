@@ -7,15 +7,34 @@ getinfo
 
     Usage: getinfo ...
     
-    Load shell scripts to fetch variables/configuration.
+    Load shell scripts to fetch and check variables/configurations in
+    shell scripts.
     
-      -l FILE...     : Load files.
-      -L FILE...     : Load files (optional).
-      -c VAR...      : Check variables are set, print VAR_help if not.
-      -a VAR=HELP... : Set variable help.
-      -p all|VARS... : Print variables.
-      -s             : Print variable help summary.
-      -g VARS...     : Get variable value.
+    Loading files and fetching variables:
+    
+      -l FILE... : Load files.
+      -L FILE... : Load files (optional).
+      -g VARS... : Get variable value.
+      -G VARS... : Get variable value trimed and '#' comments removed.
+    
+    Documenting variables:
+    
+      -a VAR=HELP...   : Set variable help.
+      -s               : Print variable help summary.
+      -p all|VARS...   : Print variables and their values.
+    
+    Checking variables:
+    
+      -c VAR[=CHECKER] : Check variables (By default whether set).
+    
+    The following checkers are defined:
+    
+      s  : Is not empty.             yn : Can be "y" or "n".
+      d  : Contains a directory.     f  : Contains a file.
+    
+    New checkers can be defined by creating functions/scripts with
+    the following interface: getinfo_c_NAME VARIABLE VALUE, which
+    return 1 and an error message in case of error.
 
 ## Collaborating
 
